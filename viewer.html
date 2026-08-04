@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Tratamento em Grupo</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 16px; background: #f7f7f7; color: #222; }
+  h2 { margin-bottom: 4px; }
+  table { border-collapse: collapse; width: 100%; max-width: 700px; }
+  th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
+  th { background: #eee; }
+  .erro { color: #b00020; font-weight: bold; }
+  .vazio { color: #888; font-style: italic; }
+  .bloco { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 14px; margin-bottom: 16px; max-width: 700px; }
+  .imagens img { max-width: 90px; max-height: 90px; border-radius: 6px; }
+  .imagens div { display: inline-block; text-align: center; margin: 4px; }
+  .rotulo-img { font-size: 11px; color: #555; }
+</style>
+</head>
+<body>
+
+<div id="conteudo">Carregando...</div>
+
+<script>
+async function carregar() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  const el = document.getElementById('conteudo');
+
+  if (!id) {
+    el.innerHTML = '<p class="erro">Nenhum ID informado no link.</p>';
+    return;
+  }
+
+  try {
+    const resp = await fetch('https://api.jsonbin.io/v3/b/' + id + '/latest');
+    if (!resp.ok) {
+      el.innerHTML = '<p class="erro">Não foi possível carregar os dados (status ' + resp.status + ').</p>';
+      return;
+    }
+    const data = await resp.json();
+    const record = data.record || {};
+
+    if (record.participantes) {
+      renderParticipantes(record, el);
+    } else if (record.texto !== undefined || record.imagens !== undefined) {
+      renderDecreto(record, el);
+    } else {
+      el.innerHTML = '<p class="vazio">Nenhum dado reconhecido para exibir.</p>';
+    }
+  } catch (e) {
+    el.innerHTML = '<p class="erro">Erro ao carregar: ' + e.message + '</p>';
+  }
+}
+
+function renderParticipantes(record, el) {
+  let html = '<h2>Sala ' + (record.sala || '') + ' — Participantes</h2>';
+  const lista = record.participantes || [];
+  if (lista.length === 0) {
+    html += '<p class="vazio">Nenhum participante ativo cadastrado.</p>';
+  } else {
+    html += '<table><tr><th>Nome</th><th>Nascimento</th><th>Endereço</th><th>Cidade/UF</th></tr>';
+    lista.forEach(p => {
+      html += '<tr>' +
+              '<td>' + (p.nome || '') + '</td>' +
+              '<td>' + (p.nascimento || '') + '</td>' +
+              '<td>' + (p.endereco || '') + '</td>' +
+              '<td>' + (p.cidade || '') + (p.uf ? '/' + p.uf : '') + '</td>' +
+              '</tr>';
+    });
+    html += '</table>';
+  }
+  el.innerHTML = html;
+}
+
+function renderDecreto(record, el) {
+  let html = '<div class="bloco">';
+  html += '<h2>Sala ' + (record.sala || '') + ' — ' + (record.tratamento || '') + '</h2>';
+  if (record.texto) {
+    html += '<p style="white-space:pre-wrap;line-height:1.5;color:#333;">' + record.texto + '</p>';
+  } else {
+    html += '<p class="vazio">Texto do decreto ainda não cadastrado.</p>';
+  }
+  const imagens = record.imagens || [];
+  if (imagens.length > 0) {
+    html += '<div class="imagens">';
+    imagens.forEach(img => {
+      html += '<div><img src="' + img.url + '" alt="' + (img.rotulo || '') + '">' +
+              '<div class="rotulo-img">' + (img.rotulo || '') + '</div></div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+carregar();
+</script>
+
+</body>
+</html>
